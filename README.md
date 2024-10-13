@@ -3,7 +3,7 @@ MEDTEG (Minimum Entropy Dynamic Test Grids) perimetric algorithm
 
 < This README is a placeholder. Further details and code to follow >
 
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/DOPrzV19lY/0.jpg)](https://www.youtube.com/watch?v=DOPrzV19lY)
+[![VIDEO OF MEDTEG (https://www.youtube.com/watch?v=DOPrzV19lYU)](https://img.youtube.com/vi/DOPrzV19lYU/0.jpg)](https://www.youtube.com/watch?v=DOPrzV19lYU)
 
 # To use
 ### To Understand the Basic Theory:
