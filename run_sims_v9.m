@@ -18,6 +18,7 @@
 %   0.0.6	PRJ	17/09/2024 : corrected and simplified Sim1
 %   0.0.7	PRJ	19/09/2024 : incremenetal tweaks and aesthetic improvements
 %   0.0.8	PRJ	20/09/2024 : first full manuscript draft
+%   0.0.9	PRJ	19/12/2024 : R1 (with simple max-gradient algorithm for comparison)
 
 
 % init (clear/close everything)
@@ -30,26 +31,28 @@ clear all %#ok
 %% user params
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% For final published manuscript [~N hours for all 4 Sims]
+% For print-quality manuscript [~N hours for all 4 Sims]
 % N_SIM = [1000 1000 1000 1000]; % Sims1-4
 % N_IND_SIMS_TO_PLOT = 5;
 % N_BOOTSTRP = 20000;
 
-% For almost-final writeup [1.1 hours for all 4 Sims]
-N_SIM = [200 200 200 200]; % Sims1-4
-N_IND_SIMS_TO_PLOT = 5;
-N_BOOTSTRP = 2000;
-
-% For initial drafting [~25 mins for all 4 Sims]
-% N_SIM = [50 50 50 50]; % Sims1-4
+% For almost-final writeup [1.1 hours for all 4 Sims]  [comment out otherwise]
+% N_SIM = [200 200 200 200]; % Sims1-4
 % N_IND_SIMS_TO_PLOT = 5;
-% N_BOOTSTRP = 1000;
+% N_BOOTSTRP = 2000;
+% SAVE_PLOTS = true;
 
-% for rapid prototyping/debugging
+% For initial drafting [~25 mins for all 4 Sims]  [comment out otherwise]
+N_SIM = [50 50 50 50]; % Sims1-4
+N_IND_SIMS_TO_PLOT = 5;
+N_BOOTSTRP = 1000;
+SAVE_PLOTS = true;
+
+% for rapid prototyping/debugging [~2.5 mins for all 4 Sims] [comment out otherwise]
 % N_SIM = [5 5 5 5]; % Sims1-4
 % N_IND_SIMS_TO_PLOT = 1;
 % N_BOOTSTRP = 100;
-
+% SAVE_PLOTS = false;
 
 
 % ************* SHOULD BE NO NEED TO EDIT BELOW THIS POINT *************
@@ -69,9 +72,9 @@ tic();
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('\n\n ***** SIM 1 ***** \n\n')
 
-% =======================================================================
-%% 1.1 run simulations
-% =======================================================================
+% =========================================================================
+% 1.1 run simulations
+% =========================================================================
 
     % params
     N_SIMS = N_SIM(1); 
@@ -127,6 +130,7 @@ fprintf('\n\n ***** SIM 1 ***** \n\n')
             warning(ME.message);
             continue
         end
+
 
         % measure volume (see volumetric.m)
         % NB: should technically convert to steradians, as areas "cannot be represented perfectly without distortion of any two-dimensional projection of a curved surface.... The graphied visual field... is an azimuthal map projection of the inner surface of the perimetry bowl. This means that distances and directions from the center of the graph are correctly represeted but area, circumferential distances, and directional relationship other than from the center are not correctly represented."
@@ -350,154 +354,10 @@ fprintf('\n\n ***** SIM 1 ***** \n\n')
     fig_save(hFig2, 'sim1_simObserver_24-2', EXPORT_DIR, EXPORT_FORMAT);
 
 
-% % =======================================================================
-% %% 1.3 analysis
-% % =======================================================================
+% =========================================================================
+% 1.3 analysis
+% =========================================================================
 % close all
-% 
-%     % Plotting ---------------------------------------------------------
-% 
-%     % open a new figure window.
-%     figDim = [20 35];
-%     nPlots = [1 3];
-%     isTight = [.03 0];
-%     isSquare = true;
-%     styleFlag = [];
-%     axesLims = [];
-%     hFig = fig_make(figDim, nPlots, isTight, isSquare, styleFlag, axesLims);
-% 
-%     % nudge the subplots right
-%     fig_nudge(fig_subplot(2), .065, 0);
-%     fig_nudge(fig_subplot(3), .10, 0);
-% 
-%     % ---------------------------------------------------------------------
-%     fig_subplot(1);
-%     vol_err = bsxfun(@minus, HillOfVision_volume_est, HillOfVision_volume_true); % HillOfVision_volume_est - HillOfVision_volume_true
-%     % dat = repmat(vol_err(:,1), 1, length(nExtraLocations)) - vol_err; % compute change in error as function of N
-% 
-%     dat = vol_err;
-%     % errorbar(nExtraLocations(2:end), mean(dat), diff(bootci(N_BOOTSTRP,{@mean,dat})), 'ko');
-%     errorbar(nExtraLocations, mean(dat), diff(bootci(N_BOOTSTRP,{@mean,dat})), 'ko');
-%     % hold on
-%     % plot(nExtraLocatios, vol_err, 'k.')
-%     % xlim([-1 6]);
-% 
-%     % add stats
-% 
-%     % RM ANOVA 1 of 2 ---------------
-%     % run repeated measures ANOVA
-%     DV = vol_err;
-%     IV = repmat(nExtraLocations,N_SIMS,1)+1; % +1 as RMAOV1 hates 0 values (!)
-%     subject = repmat(column(1:N_SIMS), 1, length(nExtraLocations));
-%     [P, statsTable, eta2, pEta2] = RMAOV1([DV(:) IV(:) subject(:)]);
-% 
-%     % RM ANOVA 2 of 2 ---------------
-%     % confirm result using a different implementation of repeated measures anova
-%     data = array2table(vol_err, 'VariableNames', {'n0', 'n1', 'n2', 'n3', 'n4', 'n5'});
-% 
-%     % Create a within-subjects design table indicating the measurements are repeated
-%     withinDesign = table([1 2 3 4 5 6]', 'VariableNames', {'nExtraLocs'});
-% 
-%     % Fit the repeated measures model
-%     rmModel = fitrm(data, 'n0-n5~1', 'WithinDesign', withinDesign);
-% 
-%     % Perform the repeated measures ANOVA
-%     rmANOVA = ranova(rmModel);
-% 
-%     % Display the results
-%     % disp(rmANOVA);
-% 
-%     % add to plot
-%     txt = fStr(rmANOVA.DF(1), rmANOVA.DF(2), rmANOVA.F(1), rmANOVA.pValue(1));
-%     hTxt = textLoc(txt, 'NorthWest');
-%     fig_nudge(hTxt, -0.05, 0.05);
-% 
-%     % format the axes
-%     xTick = 0:5;
-%     xTickLabels = [];
-%     yTick = [];
-%     yTickLabels = [];
-%     xTitle = [];
-%     yTitle = {'Measurement Error, $dB/dg^2$', '(Est VF volume - True VF volume)'};
-%     xlims = [-.5 5.5];
-%     ylims = [];
-%     fig_axesFormat(gca, xTick,xTickLabels, yTick,yTickLabels, xTitle,yTitle, xlims,ylims);
-% 
-%     % ---------------------------------------------------------------------
-%     fig_subplot(2);
-%     dat = sum_squared_residuals; % repmat(vol_err(:,1), 1, length(nExtraLocations)) - vol_err;
-%     errorbar(nExtraLocations, mean(dat), diff(bootci(N_BOOTSTRP,{@mean,dat})), 'ko');
-% 
-%     % add stats
-%     data = array2table(dat, 'VariableNames', {'n0', 'n1', 'n2', 'n3', 'n4', 'n5'});
-% 
-%     % Create a within-subjects design table indicating the measurements are repeated
-%     withinDesign = table([1 2 3 4 5 6]', 'VariableNames', {'nExtraLocs'});
-% 
-%     % Fit the repeated measures model
-%     rmModel = fitrm(data, 'n0-n5~1', 'WithinDesign', withinDesign);
-% 
-%     % Perform the repeated measures ANOVA
-%     rmANOVA = ranova(rmModel);
-% 
-%     % add to plot
-%     txt = fStr(rmANOVA.DF(1), rmANOVA.DF(2), rmANOVA.F(1), rmANOVA.pValue(1));
-%     hTxt = textLoc(txt, 'NorthWest');
-%     fig_nudge(hTxt, -0.05, 0.05);
-% 
-%     txt = fStr(rmANOVA.DF(1), rmANOVA.DF(2), rmANOVA.F(1), rmANOVA.pValue(1));
-%     hTxt = textLoc(txt, 'NorthWest');
-%     fig_nudge(hTxt, -0.05, 0.05);
-% 
-%     % format the axes
-%     xTick = 0:5;
-%     xTickLabels = [];
-%     yTick = [];
-%     yTickLabels = [];
-%     xTitle = [];
-%     yTitle = {'Measurement Error, $dB$', '(Sum Squared Residuals)'};
-%     xlims = [-.5 5.5];
-%     ylims = [];
-%     fig_axesFormat(gca, xTick,xTickLabels, yTick,yTickLabels, xTitle,yTitle, xlims,ylims);
-% 
-% 
-%     % ---------------------------------------------------------------------
-%     fig_subplot(3);
-%     dat = nLocsInScotoma;
-%     errorbar(nExtraLocations, mean(dat), diff(bootci(N_BOOTSTRP,{@mean,dat})), 'ko');
-%     % hold on
-%     % plot(nExtraLocations, nLocsInScotoma, 'k.')
-%     % xlim([-1 6]);
-% 
-%     % run repeated measures ANOVA
-%     data = array2table(nLocsInScotoma, 'VariableNames', {'n0', 'n1', 'n2', 'n3', 'n4', 'n5'});
-%     rmModel = fitrm(data, 'n0-n5~1', 'WithinDesign', withinDesign);
-%     rmANOVA = ranova(rmModel);
-%     % add stats
-%     txt = fStr(rmANOVA.DF(1), rmANOVA.DF(2), rmANOVA.F(1), rmANOVA.pValue(1));
-%     hTxt = textLoc(txt, 'NorthWest');
-%     fig_nudge(hTxt, -0.05, 0.05);
-% 
-%     % format all the axes
-%     yTick = 3:8;
-%     yTitle = '$N$ test points within scotoma';
-%     ylims = [2.5 8.5];
-%     fig_axesFormat(gca, xTick,xTickLabels, yTick,yTickLabels, xTitle,yTitle, xlims,ylims);
-% 
-%     % format the figure
-%     xTitle = '$N$ Additional Test Locations';
-%     yTitle = [];
-%     mainTitle = [];
-%     fontSize = 16;
-%     fig_figFormat(hFig, xTitle,yTitle,mainTitle, fontSize, false);
-% 
-%     %% save
-%     fig_save(hFig, 'sim1_results', EXPORT_DIR, EXPORT_FORMAT);
-
-% =======================================================================
-%% 1.3 analysis
-% =======================================================================
-close all
     
     % Plotting ---------------------------------------------------------
 
@@ -554,7 +414,7 @@ close all
 fprintf('\n\n ***** SIM 2 ***** \n\n')
 
 % =========================================================================
-%% 2.1 run simulations
+% 2.1 run simulations
 % =========================================================================
 
     % params
@@ -699,9 +559,10 @@ fprintf('\n\n ***** SIM 2 ***** \n\n')
         close(hFig);
     end
 
-% =======================================================================
-%% 2.2 Plot simulated observer
-% =======================================================================
+
+% =========================================================================
+% 2.2 Plot simulated observer
+% =========================================================================
 % close all
 
     % plot 30-2
@@ -749,9 +610,9 @@ fprintf('\n\n ***** SIM 2 ***** \n\n')
     fig_save(hFig1, 'sim2_simObserver_30-2', EXPORT_DIR, EXPORT_FORMAT);
     fig_save(hFig2, 'sim2_simObserver_24-2', EXPORT_DIR, EXPORT_FORMAT);
 
-% =======================================================================
-%% 2.3 analysis
-% =======================================================================
+% =========================================================================
+% 2.3 analysis
+% =========================================================================
 % close all
 
     % open a new figure window
@@ -805,14 +666,13 @@ fprintf('\n\n ***** SIM 2 ***** \n\n')
     fig_save(hFig, 'sim2_results', EXPORT_DIR, EXPORT_FORMAT);
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% SIM 3: Integrating structural data -- example 3 in MEDTEG.runExamples()
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('\n\n ***** SIM 3 ***** \n\n')
 
 % =========================================================================
-%% 3.1 run simulations
+% 3.1 run simulations
 % =========================================================================
 
     % params
@@ -906,7 +766,7 @@ fprintf('\n\n ***** SIM 3 ***** \n\n')
             yAxisTitle  = [];
             xlims       = [-30 30];
             ylims       = [-30 30];
-            fontSize    = [];
+            fontSize    = [14 10];
             fig_axesFormat(gca, xTick,xTickLabels, yTick,yTickLabels, xAxisTitle,yAxisTitle, xlims,ylims, fontSize);
 
             % add crosshairs
@@ -917,7 +777,7 @@ fprintf('\n\n ***** SIM 3 ***** \n\n')
                 xTitle      = ['X' char(176)];
                 yTitle      = ['Y' char(176)];
                 mainTitle   = [];
-                fontSize    = 16;
+                fontSize    = [14 10];
                 [hXTitle,hYTitle] = fig_figFormat(hFig, xTitle,yTitle,mainTitle, fontSize, false);
                 fig_nudge(hXTitle, 0, .3);
                 fig_nudge(hYTitle, .3, 0);
@@ -932,9 +792,9 @@ fprintf('\n\n ***** SIM 3 ***** \n\n')
         end
     end
 
-% =======================================================================
-%% 3.2 Plot simulated observer
-% =======================================================================
+% =========================================================================
+% 3.2 Plot simulated observer
+% =========================================================================
 % close all
 
     % plot 30-2
@@ -982,9 +842,9 @@ fprintf('\n\n ***** SIM 3 ***** \n\n')
     fig_save(hFig1, 'sim3_simObserver_30-2', EXPORT_DIR, EXPORT_FORMAT);
     fig_save(hFig2, 'sim3_simObserver_24-2', EXPORT_DIR, EXPORT_FORMAT);
 
-% =======================================================================
-%% 3.3 analysis
-% =======================================================================
+% =========================================================================
+% 3.3 analysis
+% =========================================================================
 % close all
 
     % open a new figure window
@@ -1014,7 +874,7 @@ fprintf('\n\n ***** SIM 3 ***** \n\n')
     yAxisTitle  = [];
     xlims       = [];
     ylims       = [];
-    fontSize    = [14 12];
+    fontSize    = [];
     formatData    = [];
     xMinorTick    = [];
     yMinorTick    = [];
@@ -1042,8 +902,7 @@ fprintf('\n\n ***** SIM 3 ***** \n\n')
     fig_nudge(hAxisLabel, -0.1, 0);
     fig_expandFigureWindow(hFig, 0.5, 0);
 
-
-    %% save
+    % save
     fig_save(hFig, 'sim3_results', EXPORT_DIR, EXPORT_FORMAT);
 
 
@@ -1053,7 +912,7 @@ fprintf('\n\n ***** SIM 3 ***** \n\n')
 fprintf('\n\n ***** SIM 4 ***** \n\n')
 
 % =========================================================================
-%% 4.1 run simulations
+% 4.1 run simulations
 % =========================================================================
 
     % params
@@ -1100,7 +959,7 @@ fprintf('\n\n ***** SIM 4 ***** \n\n')
     x_hidensity = x1(~isnan(x1));
     y_hidensity = y1(~isnan(y1));
 
-    %% run
+    % run
     for i = 1:N_SIMS
         % run
         try
@@ -1248,9 +1107,9 @@ fprintf('\n\n ***** SIM 4 ***** \n\n')
         close(hFig);
     end
 
-% =======================================================================
-%% 4.2 Plot simulated observer
-% =======================================================================
+% =========================================================================
+% 4.2 Plot simulated observer
+% =========================================================================
 % close all
 
     % plot 30-2
@@ -1298,9 +1157,9 @@ fprintf('\n\n ***** SIM 4 ***** \n\n')
     fig_save(hFig1, 'sim4_simObserver_30-2', EXPORT_DIR, EXPORT_FORMAT);
     fig_save(hFig2, 'sim4_simObserver_24-2', EXPORT_DIR, EXPORT_FORMAT);
 
-% =======================================================================
-%% 4.3 analysis
-% =======================================================================
+% =========================================================================
+% 4.3 analysis
+% =========================================================================
 % close all
 
     % open a new figure window
@@ -1391,10 +1250,8 @@ fprintf('\n\n ***** SIM 4 ***** \n\n')
     mainTitle   = [];
     fontSize    = 16;
     [hXTitle,hYTitle,hTitle] = fig_figFormat(hFig, xTitle,yTitle,mainTitle, fontSize, false);
-    % fig_nudge(hXTitle, 0, .05);
 
-
-    %% save
+    % save
     fig_save(hFig, 'sim4_results', EXPORT_DIR, EXPORT_FORMAT);
 
 

@@ -4,6 +4,9 @@ classdef MEDTEG < handle
     %   >>> How to use:
     %   For examples of use, see MEDTEG.runExample()
     %
+    %   Note that all functions assume dealing VFs in right eye (OD)
+    %   format. Flip the x-axis values if left eye!
+    %
     %   >>> Background Info:
     %   TBC
     %
@@ -27,6 +30,7 @@ classdef MEDTEG < handle
     % Verinfo:
     %   0.0.1	PRJ	06/09/2024 : first_build
     %   0.0.2	PRJ	09/09/2024 : added example usage demos
+    %   0.0.3	PRJ	19/12/2024 : for comparison/pedagogical purposes only, added option to instead select the candidate with the max-difference between between neighbours
     %
     % Copyright 2024 : P R Jones <petejonze@gmail.com>
     % *********************************************************************
@@ -40,7 +44,8 @@ classdef MEDTEG < handle
 
     properties (GetAccess = public, SetAccess = private)
 
-        % XXXXX
+        % optional weighting of points depending on their location in the
+        % VF
         candWeightingFunc;
         weightFuncParams;
 
@@ -48,8 +53,12 @@ classdef MEDTEG < handle
         % for details)
         QPlusParams
 
-        % XXXXXX
+        % constrain new points to be within convex hull, to prevent VF
+        % "creep"
         excludeOutsideConvexHull = true; % TODO currently no way of setting in constructor
+
+        % for comparison/pedagogical purposes only: Use a simple "max difference between neighbours" to select the candidate point
+        USE_MAX_DIFF_INSTEAD = true;
     end
 
 
@@ -184,16 +193,16 @@ classdef MEDTEG < handle
         % Stage B: Initialise each point and determine best candidate (the
         % one that maximises the reduction in entropy/mm2)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [bestCandidateXY, bestCandidateQPlusObj, wEDHdeg2Max, all_wEDHdeg2, all_candQPlusObjs] = selectBestCandidate(obj, existingTestLocations_XY, existingTestLocations_QuestPlus, candidates, candWeights)
+        function [bestCandidateXY, bestCandidateQPlusObj, wEDHdeg2Max, all_wEDHdeg2, all_candQPlusObjs] = selectBestCandidate(obj, existingTestLocations_XY, existingTestLocations_QuestPlus, candidatesXY, candWeights)
             % defensive user-input validation
             if size(existingTestLocations_XY,1) ~= length(existingTestLocations_QuestPlus)
                 error('mismatch ????? n=%i xy locations, but %i QUEST+ objects ', size(existingTestLocations_XY,1), length(existingTestLocations_QuestPlus));
-            elseif length(candidates) ~= length(candWeights)
-                error('mismatch ????? n=%i candidate xy locations, but %i weights', length(candidates), length(candWeights));
+            elseif size(candidatesXY, 1) ~= length(candWeights)
+                error('mismatch ????? n=%i candidate xy locations, but %i weights', length(candidatesXY), length(candWeights));
             end
 
             % compute params
-            nCandidates = size(candidates, 1);
+            nCandidates = size(candidatesXY, 1);
 
             % For each candidate location, compute PMF and Area. For PMF we
             % will compute the weighted average of all the PMFs from the new points
@@ -210,9 +219,10 @@ classdef MEDTEG < handle
             % Compute H, EDH, EDHdeg2, & wEDHdeg2 for each candidate
             all_wEDHdeg2 = nan(nCandidates, 1);
             all_candQPlusObjs = cell(nCandidates, 1);
+            all_maxThreshDiffBetweenNeighbours = nan(nCandidates, 1);
             for i = 1:nCandidates
                 % get the next candidate point
-                candidatePoint = candidates(i,:);
+                candidatePoint = candidatesXY(i,:);
     
                 % add candidate to existing points
                 xy1 = [existingTestLocations_XY; candidatePoint];
@@ -256,6 +266,28 @@ classdef MEDTEG < handle
                 % create a new Q+ object with candidatePMF as the prior
                 candQPlusObj = MEDTEG.createQuestPlusObj(obj.QPlusParams, candidatePMF);
     
+                % for comparison/pedagogical purposes only!
+                if (obj.USE_MAX_DIFF_INSTEAD)
+                    % compute each neighbour's estimated threshold
+                    [~,paramIdx] = max(neighboursPMF,[],2); 
+                    neighboursThresh = obj.QPlusParams.paramDomain(paramIdx); % MODE. See questplus.m for other/alternative ways of computing thresholds
+
+                    % compute the maximum difference
+                    all_maxThreshDiffBetweenNeighbours(i) = (max(neighboursThresh) - min(neighboursThresh));
+
+                    % hack -- set difference to 0 if candidate point falls within physiologic blindspot (i.e., to avoid testing such points)
+                    crit_deg = 6;
+                    d_upper = sqrt( (candidatePoint(1) - 15).^2 + (candidatePoint(2) - 3).^2 );
+                    d_lower = sqrt( (candidatePoint(1) - 15).^2 + (candidatePoint(2) - -3).^2 );
+                    if (d_upper<crit_deg || d_lower<crit_deg)
+                        all_maxThreshDiffBetweenNeighbours(i) = 0;
+                    end
+
+                    % skip the rest of the FOR loop 
+                    all_candQPlusObjs{i} = candQPlusObj;
+                    continue;
+                end
+
                 % get the current negative Entropy, H. The closer to 0, the more CERTAIN we are (i.e., the narrower the PMF). The bigger the value the more UNCERTAIN we are
                 H = candQPlusObj.getEntropy();
     
@@ -292,6 +324,11 @@ classdef MEDTEG < handle
                 end
             end
     
+            % for comparison/pedagogical purposes only!
+            if (obj.USE_MAX_DIFF_INSTEAD)
+                all_wEDHdeg2 = all_maxThreshDiffBetweenNeighbours; % hack!
+            end
+
             % Select best candidate (i.e., the point that will lead to the
             % greatest gain in information (i.e., greatest decrease in
             % entropy). In future this could be updated to allow for different
@@ -299,7 +336,7 @@ classdef MEDTEG < handle
             % we'll also return the raw vals anyway, so user is free to use
             % them in whatever way they chose.
             [wEDHdeg2Max, idx] = max(all_wEDHdeg2);
-            bestCandidateXY = candidates(idx,:);
+            bestCandidateXY = candidatesXY(idx,:);
             bestCandidateQPlusObj = all_candQPlusObjs{i};
         end
     
